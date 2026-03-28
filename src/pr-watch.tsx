@@ -87,19 +87,28 @@ export default function PrWatch() {
       tooltip="GitHub Sentinel"
       isLoading={isLoading}
     >
-      {groups.map((group) => (
-        <MenuBarExtra.Section key={group.category} title={`${group.icon} ${group.label}`}>
-          {group.notifications.map((n) => (
-            <MenuBarExtra.Item
-              key={n.id}
-              icon={CATEGORY_ICONS[n.category] ?? Icon.Circle}
-              title={n.title}
-              subtitle={n.repo}
-              onAction={() => open(n.htmlUrl)}
-            />
-          ))}
-        </MenuBarExtra.Section>
-      ))}
+      {groups.map((group) => {
+        const byRepo = new Map<string, typeof group.notifications>();
+        for (const n of group.notifications) {
+          if (!byRepo.has(n.repo)) byRepo.set(n.repo, []);
+          byRepo.get(n.repo)!.push(n);
+        }
+        return (
+          <MenuBarExtra.Section key={group.category} title={`${group.icon} ${group.label}`}>
+            {[...byRepo.entries()].map(([repo, notifications]) => (
+              <MenuBarExtra.Submenu key={repo} title={repo} icon={CATEGORY_ICONS[group.category] ?? Icon.Circle}>
+                {notifications.map((n) => (
+                  <MenuBarExtra.Item
+                    key={n.id}
+                    title={n.title}
+                    onAction={() => open(n.htmlUrl)}
+                  />
+                ))}
+              </MenuBarExtra.Submenu>
+            ))}
+          </MenuBarExtra.Section>
+        );
+      })}
       {totalCount > 0 && (
         <MenuBarExtra.Section>
           <MenuBarExtra.Item
