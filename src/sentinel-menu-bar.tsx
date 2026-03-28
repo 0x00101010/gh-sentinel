@@ -100,7 +100,7 @@ export default function SentinelMenuBar() {
 
   return (
     <MenuBarExtra
-      icon={Icon.Bell}
+      icon={{ source: "github-mark.svg", tintColor: Color.PrimaryText }}
       title={totalCount > 0 ? String(totalCount) : undefined}
       tooltip="GitHub Sentinel"
       isLoading={isLoading}
