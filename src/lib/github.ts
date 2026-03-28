@@ -1,5 +1,5 @@
 import { Cache, getPreferenceValues } from "@raycast/api";
-import { execSync } from "child_process";
+import { exec } from "./exec";
 import type {
   GitHubNotification,
   ParsedNotification,
@@ -14,22 +14,21 @@ const SEEN_IDS_KEY = "seen-notification-ids";
 const MAX_SEEN = 500;
 
 export function fetchNotifications(): GitHubNotification[] {
-  const raw = execSync("gh api notifications --paginate", {
-    encoding: "utf-8",
+  const raw = exec('gh api "notifications?per_page=50"', {
     maxBuffer: 10 * 1024 * 1024,
-    timeout: 30_000,
+    timeout: 15_000,
   });
   return JSON.parse(raw) as GitHubNotification[];
 }
 
 export function markAsRead(threadId: string): void {
-  execSync(`gh api --method PATCH notifications/threads/${threadId}`, {
+  exec(`gh api --method PATCH notifications/threads/${threadId}`, {
     timeout: 10_000,
   });
 }
 
 export function markAllAsRead(): void {
-  execSync(`gh api --method PUT notifications --field read=true`, {
+  exec(`gh api --method PUT notifications --field read=true`, {
     timeout: 10_000,
   });
 }

@@ -1,5 +1,5 @@
 import { getPreferenceValues } from "@raycast/api";
-import { execSync } from "child_process";
+import { exec } from "./exec";
 import type { Preferences } from "../types";
 
 interface NotifyOptions {
@@ -24,7 +24,7 @@ export function notify(opts: NotifyOptions): void {
   if (opts.group) args.push(`-group "${escape(opts.group)}"`);
 
   try {
-    execSync(`${terminalNotifierPath} ${args.join(" ")}`, { timeout: 5_000 });
+    exec(`${terminalNotifierPath} ${args.join(" ")}`, { timeout: 5_000 });
   } catch {
     // terminal-notifier may not be installed — fail silently
   }

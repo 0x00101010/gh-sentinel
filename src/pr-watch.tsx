@@ -1,4 +1,4 @@
-import { Cache, environment, getPreferenceValues, Icon, LaunchType, MenuBarExtra, open } from "@raycast/api";
+import { Cache, environment, getPreferenceValues, Icon, LaunchType, MenuBarExtra, open, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import {
   fetchNotifications,
@@ -39,7 +39,9 @@ export default function PrWatch() {
   const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    if (!shouldPoll()) {
+    const isUserLaunch = environment.launchType === LaunchType.UserInitiated;
+
+    if (!isUserLaunch && !shouldPoll()) {
       setIsLoading(false);
       return;
     }
@@ -70,8 +72,9 @@ export default function PrWatch() {
 
       updateSeenIds(filtered.map((n) => n.id));
       recordPoll();
-    } catch {
-      // gh CLI may not be authed — show empty state
+    } catch (e) {
+      console.error("gh-sentinel fetch error:", e);
+      showToast({ style: Toast.Style.Failure, title: "Fetch failed", message: String(e) });
     } finally {
       setIsLoading(false);
     }

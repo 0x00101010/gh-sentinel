@@ -1,10 +1,9 @@
 import { getPreferenceValues } from "@raycast/api";
-import { execSync } from "child_process";
+import { exec } from "./exec";
 import type { Preferences, ReviewResult } from "../types";
 
 export function fetchDiff(repo: string, prNumber: number): string {
-  return execSync(`gh pr diff ${prNumber} --repo ${repo}`, {
-    encoding: "utf-8",
+  return exec(`gh pr diff ${prNumber} --repo ${repo}`, {
     maxBuffer: 10 * 1024 * 1024,
     timeout: 30_000,
   });
@@ -28,8 +27,7 @@ export function runReview(repo: string, prNumber: number): ReviewResult {
   const cmd = reviewCommand === "opencode" ? "opencode" : "claude";
 
   try {
-    const body = execSync(`echo ${shellQuote(prompt)} | ${cmd} --print`, {
-      encoding: "utf-8",
+    const body = exec(`echo ${shellQuote(prompt)} | ${cmd} --print`, {
       maxBuffer: 10 * 1024 * 1024,
       timeout: 5 * 60_000,
     });
@@ -40,7 +38,7 @@ export function runReview(repo: string, prNumber: number): ReviewResult {
 }
 
 export function postReview(repo: string, prNumber: number, body: string): void {
-  execSync(`gh pr review ${prNumber} --repo ${repo} --comment --body ${shellQuote(body)}`, {
+  exec(`gh pr review ${prNumber} --repo ${repo} --comment --body ${shellQuote(body)}`, {
     timeout: 30_000,
   });
 }
