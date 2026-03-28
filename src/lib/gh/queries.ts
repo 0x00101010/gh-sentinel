@@ -7,6 +7,7 @@ query {
         title
         url
         state
+        isDraft
         updatedAt
         author { login avatarUrl }
         repository { nameWithOwner }
@@ -25,6 +26,7 @@ query {
         title
         url
         state
+        isDraft
         updatedAt
         author { login avatarUrl }
         repository { nameWithOwner }
@@ -45,10 +47,10 @@ query {
 }
 `;
 
-export function buildPrStateQuery(prs: { repo: string; number: number }[]): string {
+export function buildPrDetailQuery(prs: { repo: string; number: number }[]): string {
   const aliases = prs.map((pr, i) => {
     const [owner, name] = pr.repo.split("/");
-    return `pr${i}: repository(owner:"${owner}", name:"${name}") { pullRequest(number:${pr.number}) { state } }`;
+    return `pr${i}: repository(owner:"${owner}", name:"${name}") { pullRequest(number:${pr.number}) { state isDraft author { login avatarUrl } } }`;
   });
   return `query { ${aliases.join(" ")} }`;
 }
@@ -76,6 +78,7 @@ export interface SearchNode {
   title: string;
   url: string;
   state: string;
+  isDraft?: boolean;
   updatedAt: string;
   author: { login: string; avatarUrl: string } | null;
   repository: { nameWithOwner: string };
@@ -90,6 +93,6 @@ export interface SearchResult {
   };
 }
 
-export interface PrStateResult {
-  data: Record<string, { pullRequest: { state: string } | null } | null>;
+export interface PrDetailResult {
+  data: Record<string, { pullRequest: { state: string; isDraft: boolean; author: { login: string; avatarUrl: string } | null } | null } | null>;
 }

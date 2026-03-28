@@ -54,6 +54,7 @@ export function mapNotification(n: GitHubNotification): TriageItem | null {
     reasons: [reason],
     priority: 0,
     state: "open",
+    isDraft: false,
     author: "",
     avatarUrl: n.repository.owner.avatar_url,
     threadId: n.id,
@@ -79,6 +80,7 @@ export function mapSearchNode(node: SearchNode, source: "review" | "assigned"): 
     reasons: [reason],
     priority: 0,
     state,
+    isDraft: node.isDraft ?? false,
     author: node.author?.login ?? "",
     avatarUrl: node.author?.avatarUrl ?? "",
   };

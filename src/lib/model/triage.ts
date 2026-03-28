@@ -30,6 +30,7 @@ export interface TriageItem {
   reasons: TriageReason[];
   priority: number;
   state: "open" | "closed" | "merged";
+  isDraft: boolean;
   author: string;
   avatarUrl: string;
   threadId?: string;

@@ -1,4 +1,4 @@
-import { environment, Icon, LaunchType, MenuBarExtra, open, showToast, Toast } from "@raycast/api";
+import { Color, environment, Icon, Image, LaunchType, MenuBarExtra, open, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import type { TriageItem, RepoGroup } from "./lib/model/triage";
 import { buildSnapshot } from "./lib/triage/buildSnapshot";
@@ -15,23 +15,21 @@ import {
   unhideRepo,
 } from "./lib/storage/local";
 
-const REASON_LABELS: Record<string, string> = {
-  review_requested: "Review requested",
-  assigned: "Assigned",
-  mentioned: "Mentioned",
-  ci_failing: "CI failing",
-  watched_repo_new: "New",
-  author: "Author",
-  subscribed: "Subscribed",
-};
-
-function reasonTag(item: TriageItem): string {
-  const top = item.reasons[0];
-  return REASON_LABELS[top] ?? top;
+function itemIcon(item: TriageItem): Image.ImageLike {
+  if (item.kind === "issue") {
+    return { source: "issue-open.svg", tintColor: Color.Green };
+  }
+  if (item.isDraft) {
+    return { source: "pull-request-draft.svg", tintColor: Color.SecondaryText };
+  }
+  return { source: "pull-request-open.svg", tintColor: Color.Green };
 }
 
-function kindIcon(item: TriageItem): Icon {
-  return item.kind === "pr" ? Icon.CodeBlock : Icon.ExclamationMark;
+function itemSubtitle(item: TriageItem): string {
+  const parts: string[] = [];
+  if (item.author) parts.push(item.author);
+  parts.push(`#${item.number}`);
+  return parts.join(" ");
 }
 
 export default function SentinelMenuBar() {
@@ -111,9 +109,9 @@ export default function SentinelMenuBar() {
           {group.items.map((item) => (
             <MenuBarExtra.Item
               key={item.id}
-              icon={kindIcon(item)}
+              icon={itemIcon(item)}
               title={item.title}
-              subtitle={`${reasonTag(item)} #${item.number}`}
+              subtitle={itemSubtitle(item)}
               onAction={() => open(item.htmlUrl)}
             />
           ))}
@@ -136,8 +134,9 @@ export default function SentinelMenuBar() {
               {group.items.map((item) => (
                 <MenuBarExtra.Item
                   key={item.id}
-                  icon={kindIcon(item)}
+                  icon={itemIcon(item)}
                   title={item.title}
+                  subtitle={itemSubtitle(item)}
                   onAction={() => open(item.htmlUrl)}
                 />
               ))}
