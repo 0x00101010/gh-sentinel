@@ -6,6 +6,7 @@ import { groupByRepo } from "./lib/triage/grouping";
 import { getCachedSnapshot, setCachedSnapshot } from "./lib/storage/cache";
 import { notifyNewItems } from "./lib/notify/dedupe";
 import { ghMarkAllRead } from "./lib/gh/ghClient";
+import { openReview } from "./lib/review/launcher";
 import {
   getPinnedRepos,
   getHiddenRepos,
@@ -113,6 +114,15 @@ export default function SentinelMenuBar() {
               title={item.title}
               subtitle={itemSubtitle(item)}
               onAction={() => open(item.htmlUrl)}
+              alternate={
+                item.kind === "pr" ? (
+                  <MenuBarExtra.Item
+                    icon={Icon.Terminal}
+                    title={`Review #${item.number}`}
+                    onAction={() => openReview(item.repo, item.number)}
+                  />
+                ) : undefined
+              }
             />
           ))}
           <MenuBarExtra.Item
@@ -138,6 +148,15 @@ export default function SentinelMenuBar() {
                   title={item.title}
                   subtitle={itemSubtitle(item)}
                   onAction={() => open(item.htmlUrl)}
+                  alternate={
+                    item.kind === "pr" ? (
+                      <MenuBarExtra.Item
+                        icon={Icon.Terminal}
+                        title={`Review #${item.number}`}
+                        onAction={() => openReview(item.repo, item.number)}
+                      />
+                    ) : undefined
+                  }
                 />
               ))}
               <MenuBarExtra.Item

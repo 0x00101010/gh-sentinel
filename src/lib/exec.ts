@@ -15,7 +15,7 @@ const baseEnv = { ...process.env, PATH };
 
 export async function exec(
   cmd: string,
-  opts?: { maxBuffer?: number; timeout?: number },
+  opts?: { maxBuffer?: number; timeout?: number; cwd?: string },
 ): Promise<string> {
   const { stdout } = await execPromise(cmd, {
     encoding: "utf-8",
