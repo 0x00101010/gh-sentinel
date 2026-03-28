@@ -2,51 +2,27 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "gh-sentinel",
   "title": "GitHub Sentinel",
-  "description": "Monitor GitHub notifications, surface PRs needing review, and trigger LLM reviews",
+  "description": "Unified GitHub triage — PRs, issues, and notifications in one menu bar item with priority scoring",
   "icon": "command-icon.png",
   "author": "francis",
   "categories": ["Developer Tools"],
   "license": "MIT",
   "commands": [
     {
-      "name": "pr-watch",
-      "title": "PR Watch",
-      "description": "Menu bar indicator for GitHub notifications",
+      "name": "sentinel-menu-bar",
+      "title": "Sentinel",
+      "description": "Menu bar triage for GitHub notifications, PRs, and issues",
       "mode": "menu-bar",
       "interval": "1m"
     },
     {
-      "name": "review-prs",
-      "title": "Review PRs",
-      "description": "List view of GitHub notifications with LLM review",
+      "name": "configure-watched-repos",
+      "title": "Configure Watched Repos",
+      "description": "Select repos to watch and configure notification preferences",
       "mode": "view"
     }
   ],
   "preferences": [
-    {
-      "name": "repos",
-      "title": "Watched Repos",
-      "description": "Comma-separated owner/repo list (empty = all)",
-      "type": "textfield",
-      "required": false,
-      "default": ""
-    },
-    {
-      "name": "pollInterval",
-      "title": "Poll Interval",
-      "description": "Minutes between notification polls",
-      "type": "dropdown",
-      "required": false,
-      "default": "5",
-      "data": [
-        { "title": "1 minute", "value": "1" },
-        { "title": "2 minutes", "value": "2" },
-        { "title": "5 minutes", "value": "5" },
-        { "title": "10 minutes", "value": "10" },
-        { "title": "15 minutes", "value": "15" },
-        { "title": "30 minutes", "value": "30" }
-      ]
-    },
     {
       "name": "reviewCommand",
       "title": "Review CLI",

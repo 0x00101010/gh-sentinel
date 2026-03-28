@@ -1,6 +1,6 @@
 import { getPreferenceValues } from "@raycast/api";
-import { exec } from "./exec";
-import type { Preferences } from "../types";
+import { exec } from "../exec";
+import type { Preferences } from "../model/settings";
 
 interface NotifyOptions {
   title: string;
@@ -26,7 +26,7 @@ export async function notify(opts: NotifyOptions): Promise<void> {
   try {
     await exec(`${terminalNotifierPath} ${args.join(" ")}`, { timeout: 5_000 });
   } catch {
-    // terminal-notifier may not be installed — fail silently
+    // terminal-notifier may not be installed
   }
 }
 
