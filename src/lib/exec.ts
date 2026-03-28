@@ -1,4 +1,7 @@
-import { execSync, type ExecSyncOptionsWithStringEncoding } from "child_process";
+import { exec as cpExec } from "child_process";
+import { promisify } from "util";
+
+const execPromise = promisify(cpExec);
 
 const PATH = [
   "/opt/homebrew/bin",
@@ -10,10 +13,14 @@ const PATH = [
 
 const baseEnv = { ...process.env, PATH };
 
-export function exec(cmd: string, opts?: Partial<ExecSyncOptionsWithStringEncoding>): string {
-  return execSync(cmd, {
+export async function exec(
+  cmd: string,
+  opts?: { maxBuffer?: number; timeout?: number },
+): Promise<string> {
+  const { stdout } = await execPromise(cmd, {
     encoding: "utf-8",
     env: baseEnv,
     ...opts,
   });
+  return stdout;
 }

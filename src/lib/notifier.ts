@@ -11,7 +11,7 @@ interface NotifyOptions {
   group?: string;
 }
 
-export function notify(opts: NotifyOptions): void {
+export async function notify(opts: NotifyOptions): Promise<void> {
   const { terminalNotifierPath } = getPreferenceValues<Preferences>();
   const args = [
     `-title "${escape(opts.title)}"`,
@@ -24,7 +24,7 @@ export function notify(opts: NotifyOptions): void {
   if (opts.group) args.push(`-group "${escape(opts.group)}"`);
 
   try {
-    exec(`${terminalNotifierPath} ${args.join(" ")}`, { timeout: 5_000 });
+    await exec(`${terminalNotifierPath} ${args.join(" ")}`, { timeout: 5_000 });
   } catch {
     // terminal-notifier may not be installed — fail silently
   }

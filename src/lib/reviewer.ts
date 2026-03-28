@@ -2,19 +2,19 @@ import { getPreferenceValues } from "@raycast/api";
 import { exec } from "./exec";
 import type { Preferences, ReviewResult } from "../types";
 
-export function fetchDiff(repo: string, prNumber: number): string {
-  return exec(`gh pr diff ${prNumber} --repo ${repo}`, {
+export async function fetchDiff(repo: string, prNumber: number): Promise<string> {
+  return await exec(`gh pr diff ${prNumber} --repo ${repo}`, {
     maxBuffer: 10 * 1024 * 1024,
     timeout: 30_000,
   });
 }
 
-export function runReview(repo: string, prNumber: number): ReviewResult {
+export async function runReview(repo: string, prNumber: number): Promise<ReviewResult> {
   const { reviewCommand, reviewPrompt } = getPreferenceValues<Preferences>();
 
   let diff: string;
   try {
-    diff = fetchDiff(repo, prNumber);
+    diff = await fetchDiff(repo, prNumber);
   } catch (e) {
     return { status: "error", error: `Failed to fetch diff: ${e}` };
   }
@@ -27,7 +27,7 @@ export function runReview(repo: string, prNumber: number): ReviewResult {
   const cmd = reviewCommand === "opencode" ? "opencode" : "claude";
 
   try {
-    const body = exec(`echo ${shellQuote(prompt)} | ${cmd} --print`, {
+    const body = await exec(`echo ${shellQuote(prompt)} | ${cmd} --print`, {
       maxBuffer: 10 * 1024 * 1024,
       timeout: 5 * 60_000,
     });
@@ -37,8 +37,8 @@ export function runReview(repo: string, prNumber: number): ReviewResult {
   }
 }
 
-export function postReview(repo: string, prNumber: number, body: string): void {
-  exec(`gh pr review ${prNumber} --repo ${repo} --comment --body ${shellQuote(body)}`, {
+export async function postReview(repo: string, prNumber: number, body: string): Promise<void> {
+  await exec(`gh pr review ${prNumber} --repo ${repo} --comment --body ${shellQuote(body)}`, {
     timeout: 30_000,
   });
 }

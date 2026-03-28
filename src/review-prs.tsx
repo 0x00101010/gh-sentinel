@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   fetchNotifications,
   filterByWatchedRepos,
+  filterOpenPRs,
   groupNotifications,
   parseNotification,
 } from "./lib/github";
@@ -15,20 +16,23 @@ export default function ReviewPrs() {
   const [reviews, setReviews] = useState<Record<string, ReviewResult>>({});
 
   useEffect(() => {
-    try {
-      const raw = fetchNotifications();
-      const parsed = raw.map(parseNotification);
-      const filtered = filterByWatchedRepos(parsed);
-      const grouped = groupNotifications(filtered);
-      setGroups(grouped);
-    } catch {
-      showToast({ style: Toast.Style.Failure, title: "Failed to fetch notifications" });
-    } finally {
-      setIsLoading(false);
-    }
+    (async () => {
+      try {
+        const raw = await fetchNotifications();
+        const parsed = raw.map(parseNotification);
+        const watched = filterByWatchedRepos(parsed);
+        const filtered = await filterOpenPRs(watched);
+        const grouped = groupNotifications(filtered);
+        setGroups(grouped);
+      } catch {
+        showToast({ style: Toast.Style.Failure, title: "Failed to fetch notifications" });
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
-  function handleReview(n: ParsedNotification) {
+  async function handleReview(n: ParsedNotification) {
     if (!n.prNumber) {
       showToast({ style: Toast.Style.Failure, title: "Not a PR", message: "Can only review pull requests" });
       return;
@@ -37,7 +41,7 @@ export default function ReviewPrs() {
     setReviews((prev) => ({ ...prev, [n.id]: { status: "reviewing" } }));
     showToast({ style: Toast.Style.Animated, title: "Reviewing...", message: `${n.repo}#${n.prNumber}` });
 
-    const result = runReview(n.repo, n.prNumber);
+    const result = await runReview(n.repo, n.prNumber);
     setReviews((prev) => ({ ...prev, [n.id]: result }));
 
     if (result.status === "done") {
@@ -47,12 +51,12 @@ export default function ReviewPrs() {
     }
   }
 
-  function handlePostReview(n: ParsedNotification) {
+  async function handlePostReview(n: ParsedNotification) {
     const review = reviews[n.id];
     if (!review?.body || !n.prNumber) return;
 
     try {
-      postReview(n.repo, n.prNumber, review.body);
+      await postReview(n.repo, n.prNumber, review.body);
       showToast({ style: Toast.Style.Success, title: "Review posted", message: `${n.repo}#${n.prNumber}` });
     } catch (e) {
       showToast({ style: Toast.Style.Failure, title: "Post failed", message: String(e) });

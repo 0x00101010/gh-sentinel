@@ -13,22 +13,22 @@ const cache = new Cache();
 const SEEN_IDS_KEY = "seen-notification-ids";
 const MAX_SEEN = 500;
 
-export function fetchNotifications(): GitHubNotification[] {
-  const raw = exec('gh api "notifications?per_page=50"', {
+export async function fetchNotifications(): Promise<GitHubNotification[]> {
+  const raw = await exec('gh api "notifications?per_page=50"', {
     maxBuffer: 10 * 1024 * 1024,
     timeout: 15_000,
   });
   return JSON.parse(raw) as GitHubNotification[];
 }
 
-export function markAsRead(threadId: string): void {
-  exec(`gh api --method PATCH notifications/threads/${threadId}`, {
+export async function markAsRead(threadId: string): Promise<void> {
+  await exec(`gh api --method PATCH notifications/threads/${threadId}`, {
     timeout: 10_000,
   });
 }
 
-export function markAllAsRead(): void {
-  exec(`gh api --method PUT notifications --field read=true`, {
+export async function markAllAsRead(): Promise<void> {
+  await exec(`gh api --method PUT notifications --field read=true`, {
     timeout: 10_000,
   });
 }
@@ -79,6 +79,43 @@ export function filterByWatchedRepos(notifications: ParsedNotification[]): Parse
       .filter(Boolean),
   );
   return notifications.filter((n) => watched.has(n.repo.toLowerCase()));
+}
+
+export async function filterOpenPRs(notifications: ParsedNotification[]): Promise<ParsedNotification[]> {
+  const prNotifs = notifications.filter((n) => n.subjectType === "PullRequest" && n.prNumber);
+  if (prNotifs.length === 0) return notifications;
+
+  const aliases: string[] = [];
+  const aliasToId = new Map<string, string>();
+
+  for (let i = 0; i < prNotifs.length; i++) {
+    const n = prNotifs[i];
+    const [owner, name] = n.repo.split("/");
+    const alias = `pr${i}`;
+    aliases.push(`${alias}: repository(owner:"${owner}", name:"${name}") { pullRequest(number:${n.prNumber}) { state } }`);
+    aliasToId.set(alias, n.id);
+  }
+
+  const query = `query { ${aliases.join(" ")} }`;
+  const closedSet = new Set<string>();
+
+  try {
+    const raw = await exec(`gh api graphql -f query='${query.replace(/'/g, "'\\''")}'`, {
+      timeout: 15_000,
+    });
+    const result = JSON.parse(raw) as { data: Record<string, { pullRequest: { state: string } | null } | null> };
+    for (const [alias, repoData] of Object.entries(result.data)) {
+      const state = repoData?.pullRequest?.state;
+      if (state === "MERGED" || state === "CLOSED") {
+        const id = aliasToId.get(alias);
+        if (id) closedSet.add(id);
+      }
+    }
+  } catch {
+    return notifications;
+  }
+
+  return notifications.filter((n) => !closedSet.has(n.id));
 }
 
 const CATEGORY_ORDER: NotificationCategory[] = ["review_requested", "mentions", "replies"];

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   fetchNotifications,
   filterByWatchedRepos,
+  filterOpenPRs,
   getSeenIds,
   groupNotifications,
   markAllAsRead,
@@ -46,38 +47,41 @@ export default function PrWatch() {
       return;
     }
 
-    try {
-      const raw = fetchNotifications();
-      const parsed = raw.map(parseNotification);
-      const filtered = filterByWatchedRepos(parsed);
-      const grouped = groupNotifications(filtered);
+    (async () => {
+      try {
+        const raw = await fetchNotifications();
+        const parsed = raw.map(parseNotification);
+        const watched = filterByWatchedRepos(parsed);
+        const filtered = await filterOpenPRs(watched);
+        const grouped = groupNotifications(filtered);
 
-      setGroups(grouped);
-      setTotalCount(filtered.length);
+        setGroups(grouped);
+        setTotalCount(filtered.length);
 
-      if (environment.launchType === LaunchType.Background) {
-        const seenIds = getSeenIds();
-        const unseen = filtered.filter((n) => !seenIds.has(n.id));
-        for (const n of unseen) {
-          notify({
-            title: "GitHub",
-            subtitle: n.repo,
-            message: n.title,
-            openUrl: n.htmlUrl,
-            sound: "default",
-            group: "gh-sentinel",
-          });
+        if (environment.launchType === LaunchType.Background) {
+          const seenIds = getSeenIds();
+          const unseen = filtered.filter((n) => !seenIds.has(n.id));
+          for (const n of unseen) {
+            await notify({
+              title: "GitHub",
+              subtitle: n.repo,
+              message: n.title,
+              openUrl: n.htmlUrl,
+              sound: "default",
+              group: "gh-sentinel",
+            });
+          }
         }
-      }
 
-      updateSeenIds(filtered.map((n) => n.id));
-      recordPoll();
-    } catch (e) {
-      console.error("gh-sentinel fetch error:", e);
-      showToast({ style: Toast.Style.Failure, title: "Fetch failed", message: String(e) });
-    } finally {
-      setIsLoading(false);
-    }
+        updateSeenIds(filtered.map((n) => n.id));
+        recordPoll();
+      } catch (e) {
+        console.error("gh-sentinel fetch error:", e);
+        showToast({ style: Toast.Style.Failure, title: "Fetch failed", message: String(e) });
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, []);
 
   return (
@@ -114,9 +118,9 @@ export default function PrWatch() {
           <MenuBarExtra.Item
             title="Mark All as Read"
             icon={Icon.CheckCircle}
-            onAction={() => {
+            onAction={async () => {
               try {
-                markAllAsRead();
+                await markAllAsRead();
                 setGroups([]);
                 setTotalCount(0);
               } catch {
