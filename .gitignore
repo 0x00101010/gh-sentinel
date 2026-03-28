@@ -1,0 +1,12 @@
+# dependencies
+node_modules/
+
+# Raycast build
+build/
+
+# macOS
+.DS_Store
+
+# env
+.env
+.env.local

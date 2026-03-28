@@ -1,0 +1,98 @@
+{
+  "$schema": "https://www.raycast.com/schemas/extension.json",
+  "name": "gh-sentinel",
+  "title": "GitHub Sentinel",
+  "description": "Monitor GitHub notifications, surface PRs needing review, and trigger LLM reviews",
+  "icon": "command-icon.png",
+  "author": "francis",
+  "categories": ["Developer Tools"],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "pr-watch",
+      "title": "PR Watch",
+      "description": "Menu bar indicator for GitHub notifications",
+      "mode": "menu-bar",
+      "interval": "1m"
+    },
+    {
+      "name": "review-prs",
+      "title": "Review PRs",
+      "description": "List view of GitHub notifications with LLM review",
+      "mode": "view"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "repos",
+      "title": "Watched Repos",
+      "description": "Comma-separated owner/repo list (empty = all)",
+      "type": "textfield",
+      "required": false,
+      "default": ""
+    },
+    {
+      "name": "pollInterval",
+      "title": "Poll Interval",
+      "description": "Minutes between notification polls",
+      "type": "dropdown",
+      "required": false,
+      "default": "5",
+      "data": [
+        { "title": "1 minute", "value": "1" },
+        { "title": "2 minutes", "value": "2" },
+        { "title": "5 minutes", "value": "5" },
+        { "title": "10 minutes", "value": "10" },
+        { "title": "15 minutes", "value": "15" },
+        { "title": "30 minutes", "value": "30" }
+      ]
+    },
+    {
+      "name": "reviewCommand",
+      "title": "Review CLI",
+      "description": "CLI tool for LLM review",
+      "type": "dropdown",
+      "required": false,
+      "default": "claude",
+      "data": [
+        { "title": "Claude", "value": "claude" },
+        { "title": "OpenCode", "value": "opencode" }
+      ]
+    },
+    {
+      "name": "reviewPrompt",
+      "title": "Review Prompt",
+      "description": "Prompt template with {diff} placeholder",
+      "type": "textfield",
+      "required": false,
+      "default": "Review this PR diff. Focus on bugs, security issues, and design problems. Be concise.\n\n{diff}"
+    },
+    {
+      "name": "terminalNotifierPath",
+      "title": "terminal-notifier Path",
+      "description": "Path to terminal-notifier binary",
+      "type": "textfield",
+      "required": false,
+      "default": "/opt/homebrew/bin/terminal-notifier"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.93.0",
+    "@raycast/utils": "^1.17.0"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.11",
+    "@types/node": "22.x",
+    "@types/react": "19.x",
+    "eslint": "^8.57.0",
+    "typescript": "^5.7.0"
+  },
+  "scripts": {
+    "build": "ray build",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "prepublishOnly": "echo \"Error: no publish\" && exit 1",
+    "publish": "npx @raycast/api@latest publish"
+  }
+}
