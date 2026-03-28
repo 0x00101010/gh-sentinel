@@ -17,11 +17,11 @@ import {
 
 function itemIcon(item: TriageItem): Image.ImageLike {
   if (item.kind === "issue") {
+    if (item.state === "closed") return { source: "issue-closed.svg", tintColor: Color.Purple };
     return { source: "issue-open.svg", tintColor: Color.Green };
   }
-  if (item.isDraft) {
-    return { source: "pull-request-draft.svg", tintColor: Color.SecondaryText };
-  }
+  if (item.state === "closed") return { source: "pull-request-closed.svg", tintColor: Color.Red };
+  if (item.isDraft) return { source: "pull-request-draft.svg", tintColor: Color.SecondaryText };
   return { source: "pull-request-open.svg", tintColor: Color.Green };
 }
 
