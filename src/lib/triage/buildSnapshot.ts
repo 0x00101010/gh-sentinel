@@ -4,13 +4,16 @@ import {
   SEARCH_REVIEW_REQUESTED,
   SEARCH_ASSIGNED,
   buildPrDetailQuery,
+  buildIssueDetailQuery,
   type GitHubNotification,
   type SearchResult,
   type PrDetailResult,
+  type IssueDetailResult,
 } from "../gh/queries";
 import { mapNotification, mapSearchNode } from "../gh/mappers";
 import { scoreAndSort } from "./scoring";
 import { getWatchedRepoSet } from "../storage/local";
+import { getCachedSnapshot } from "../storage/cache";
 
 function mergeItems(sources: TriageItem[][]): TriageItem[] {
   const byId = new Map<string, TriageItem>();
@@ -38,32 +41,55 @@ function mergeItems(sources: TriageItem[][]): TriageItem[] {
   return [...byId.values()];
 }
 
-async function enrichNotifPrs(items: TriageItem[]): Promise<void> {
+async function enrichItems(items: TriageItem[]): Promise<void> {
   const prs = items.filter((item) => item.kind === "pr");
-  if (prs.length === 0) return;
+  const issues = items.filter((item) => item.kind === "issue");
 
-  const query = buildPrDetailQuery(prs.map((p) => ({ repo: p.repo, number: p.number })));
+  const promises: Promise<void>[] = [];
 
-  try {
-    const result = await ghGraphQL<PrDetailResult>(query);
-    for (let i = 0; i < prs.length; i++) {
-      const data = result.data[`pr${i}`]?.pullRequest;
-      if (!data) continue;
-
-      const pr = prs[i];
-      if (data.state === "MERGED") pr.state = "merged";
-      else if (data.state === "CLOSED") pr.state = "closed";
-
-      pr.isDraft = data.isDraft;
-
-      if (data.author && !pr.author) {
-        pr.author = data.author.login;
-        pr.avatarUrl = data.author.avatarUrl;
-      }
-    }
-  } catch {
-    // fall through — items keep default state
+  if (prs.length > 0) {
+    promises.push(
+      ghGraphQL<PrDetailResult>(buildPrDetailQuery(prs.map((p) => ({ repo: p.repo, number: p.number }))))
+        .then((result) => {
+          for (let i = 0; i < prs.length; i++) {
+            const data = result.data[`pr${i}`]?.pullRequest;
+            if (!data) continue;
+            const pr = prs[i];
+            if (data.state === "MERGED") pr.state = "merged";
+            else if (data.state === "CLOSED") pr.state = "closed";
+            else pr.state = "open";
+            pr.isDraft = data.isDraft;
+            if (data.author && !pr.author) {
+              pr.author = data.author.login;
+              pr.avatarUrl = data.author.avatarUrl;
+            }
+          }
+        })
+        .catch(() => {}),
+    );
   }
+
+  if (issues.length > 0) {
+    promises.push(
+      ghGraphQL<IssueDetailResult>(buildIssueDetailQuery(issues.map((iss) => ({ repo: iss.repo, number: iss.number }))))
+        .then((result) => {
+          for (let i = 0; i < issues.length; i++) {
+            const data = result.data[`issue${i}`]?.issue;
+            if (!data) continue;
+            const issue = issues[i];
+            if (data.state === "CLOSED") issue.state = "closed";
+            else issue.state = "open";
+            if (data.author && !issue.author) {
+              issue.author = data.author.login;
+              issue.avatarUrl = data.author.avatarUrl;
+            }
+          }
+        })
+        .catch(() => {}),
+    );
+  }
+
+  await Promise.all(promises);
 }
 
 export async function buildSnapshot(): Promise<TriageSnapshot> {
@@ -80,16 +106,18 @@ export async function buildSnapshot(): Promise<TriageSnapshot> {
     .map(mapNotification)
     .filter((item): item is TriageItem => item !== null);
 
-  await enrichNotifPrs(notifItems);
-
   const reviewItems = reviewRequested?.data.search.nodes.map((n) => mapSearchNode(n, "review")) ?? [];
   const assignedItems = assigned?.data.search.nodes.map((n) => mapSearchNode(n, "assigned")) ?? [];
 
-  let merged = mergeItems([notifItems, reviewItems, assignedItems]);
+  const cachedItems = getCachedSnapshot()?.items ?? [];
+
+  let merged = mergeItems([cachedItems, notifItems, reviewItems, assignedItems]);
 
   if (hasFilter) {
     merged = merged.filter((item) => watchedRepos.has(item.repo.toLowerCase()));
   }
+
+  await enrichItems(merged);
 
   merged = merged.filter((item) => item.state === "open");
   const scored = scoreAndSort(merged);

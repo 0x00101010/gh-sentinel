@@ -55,6 +55,18 @@ export function buildPrDetailQuery(prs: { repo: string; number: number }[]): str
   return `query { ${aliases.join(" ")} }`;
 }
 
+export function buildIssueDetailQuery(issues: { repo: string; number: number }[]): string {
+  const aliases = issues.map((issue, i) => {
+    const [owner, name] = issue.repo.split("/");
+    return `issue${i}: repository(owner:"${owner}", name:"${name}") { issue(number:${issue.number}) { state author { login avatarUrl } } }`;
+  });
+  return `query { ${aliases.join(" ")} }`;
+}
+
+export interface IssueDetailResult {
+  data: Record<string, { issue: { state: string; author: { login: string; avatarUrl: string } | null } | null } | null>;
+}
+
 export interface GitHubNotification {
   id: string;
   unread: boolean;
