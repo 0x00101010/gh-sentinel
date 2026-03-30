@@ -108,3 +108,36 @@ export interface SearchResult {
 export interface PrDetailResult {
   data: Record<string, { pullRequest: { state: string; isDraft: boolean; author: { login: string; avatarUrl: string } | null } | null } | null>;
 }
+
+export function buildRepoScanQuery(repos: string[], since: string): string {
+  const repoFilter = repos.map((r) => `repo:${r}`).join(" ");
+  return `
+query {
+  search(query: "is:open ${repoFilter} updated:>${since}", type: ISSUE, first: 100) {
+    nodes {
+      ... on PullRequest {
+        number
+        title
+        url
+        state
+        isDraft
+        updatedAt
+        author { login avatarUrl }
+        repository { nameWithOwner }
+        __typename
+      }
+      ... on Issue {
+        number
+        title
+        url
+        state
+        updatedAt
+        author { login avatarUrl }
+        repository { nameWithOwner }
+        __typename
+      }
+    }
+  }
+}
+`;
+}

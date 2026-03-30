@@ -5,6 +5,7 @@ import {
   SEARCH_ASSIGNED,
   buildPrDetailQuery,
   buildIssueDetailQuery,
+  buildRepoScanQuery,
   type GitHubNotification,
   type SearchResult,
   type PrDetailResult,
@@ -12,7 +13,7 @@ import {
 } from "../gh/queries";
 import { mapNotification, mapSearchNode } from "../gh/mappers";
 import { scoreAndSort } from "./scoring";
-import { getWatchedRepoSet } from "../storage/local";
+import { getWatchedRepoSet, getPinnedRepos } from "../storage/local";
 import { getCachedSnapshot } from "../storage/cache";
 
 function mergeItems(sources: TriageItem[][]): TriageItem[] {
@@ -98,6 +99,40 @@ async function enrichItems(items: TriageItem[]): Promise<void> {
   await Promise.all(promises);
 }
 
+const SCAN_LOOKBACK_DAYS = 14;
+const SCAN_BATCH_SIZE = 10;
+
+function sinceDate(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return d.toISOString().split("T")[0];
+}
+
+async function scanWatchedRepos(repos: string[]): Promise<TriageItem[]> {
+  if (repos.length === 0) return [];
+
+  const since = sinceDate(SCAN_LOOKBACK_DAYS);
+  const batches: string[][] = [];
+  for (let i = 0; i < repos.length; i += SCAN_BATCH_SIZE) {
+    batches.push(repos.slice(i, i + SCAN_BATCH_SIZE));
+  }
+
+  const results = await Promise.all(
+    batches.map((batch) =>
+      ghGraphQL<SearchResult>(buildRepoScanQuery(batch, since)).catch(() => null),
+    ),
+  );
+
+  const items: TriageItem[] = [];
+  for (const result of results) {
+    if (!result) continue;
+    for (const node of result.data.search.nodes) {
+      items.push(mapSearchNode(node, "watched"));
+    }
+  }
+  return items;
+}
+
 export async function buildSnapshot(): Promise<TriageSnapshot> {
   const watchedRepos = await getWatchedRepoSet();
   const hasFilter = watchedRepos.size > 0;
@@ -115,9 +150,13 @@ export async function buildSnapshot(): Promise<TriageSnapshot> {
   const reviewItems = reviewRequested?.data.search.nodes.map((n) => mapSearchNode(n, "review")) ?? [];
   const assignedItems = assigned?.data.search.nodes.map((n) => mapSearchNode(n, "assigned")) ?? [];
 
+  const pinnedRepos = await getPinnedRepos();
+  const scanSet = new Set<string>([...watchedRepos, ...pinnedRepos.map((r) => r.toLowerCase())]);
+  const scanned = await scanWatchedRepos([...scanSet]);
+
   const cachedItems = getCachedSnapshot()?.items ?? [];
 
-  let merged = mergeItems([cachedItems, notifItems, reviewItems, assignedItems]);
+  let merged = mergeItems([cachedItems, notifItems, reviewItems, assignedItems, scanned]);
 
   if (hasFilter) {
     merged = merged.filter((item) => watchedRepos.has(item.repo.toLowerCase()));

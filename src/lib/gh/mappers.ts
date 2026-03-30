@@ -61,9 +61,14 @@ export function mapNotification(n: GitHubNotification): TriageItem | null {
   };
 }
 
-export function mapSearchNode(node: SearchNode, source: "review" | "assigned"): TriageItem {
+export function mapSearchNode(node: SearchNode, source: "review" | "assigned" | "watched"): TriageItem {
   const kind: TriageKind = node.__typename === "Issue" ? "issue" : "pr";
-  const reason: TriageReason = source === "review" ? "review_requested" : "assigned";
+  const reasonMap: Record<typeof source, TriageReason> = {
+    review: "review_requested",
+    assigned: "assigned",
+    watched: "watched_repo_new",
+  };
+  const reason: TriageReason = reasonMap[source];
 
   let state: TriageItem["state"] = "open";
   if (node.state === "MERGED") state = "merged";
