@@ -155,15 +155,38 @@ export default function SentinelMenuBar() {
         );
 
         if (isPinned) {
+          const INLINE_LIMIT = 10;
+          const topPrs = prs.slice(0, INLINE_LIMIT);
+          const overflowPrs = prs.slice(INLINE_LIMIT);
+          const issueLimit = Math.max(0, INLINE_LIMIT - topPrs.length);
+          const topIssues = issues.slice(0, issueLimit);
+          const overflowIssues = issues.slice(issueLimit);
+
           return [
-            prs.length > 0 && (
+            topPrs.length > 0 && (
               <MenuBarExtra.Section key={`${group.repo}:pr`} title={`📌 ${group.repo} — PRs`}>
-                {renderItems(prs)}
+                {renderItems(topPrs)}
               </MenuBarExtra.Section>
             ),
-            issues.length > 0 && (
+            topIssues.length > 0 && (
               <MenuBarExtra.Section key={`${group.repo}:issue`} title={`📌 ${group.repo} — Issues`}>
-                {renderItems(issues)}
+                {renderItems(topIssues)}
+              </MenuBarExtra.Section>
+            ),
+            (overflowPrs.length > 0 || overflowIssues.length > 0) && (
+              <MenuBarExtra.Section key={`${group.repo}:more`}>
+                <MenuBarExtra.Submenu title={`${overflowPrs.length + overflowIssues.length} more in ${group.repo}…`} icon={Icon.Ellipsis}>
+                  {overflowPrs.length > 0 && (
+                    <MenuBarExtra.Section title="Pull Requests">
+                      {renderItems(overflowPrs)}
+                    </MenuBarExtra.Section>
+                  )}
+                  {overflowIssues.length > 0 && (
+                    <MenuBarExtra.Section title="Issues">
+                      {renderItems(overflowIssues)}
+                    </MenuBarExtra.Section>
+                  )}
+                </MenuBarExtra.Submenu>
               </MenuBarExtra.Section>
             ),
             <MenuBarExtra.Section key={`${group.repo}:actions`}>
