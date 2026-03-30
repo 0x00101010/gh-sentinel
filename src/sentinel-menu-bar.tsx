@@ -6,7 +6,7 @@ import { groupByRepo } from "./lib/triage/grouping";
 import { getCachedSnapshot, setCachedSnapshot, clearCache } from "./lib/storage/cache";
 import { notifyNewItems } from "./lib/notify/dedupe";
 import { ghMarkAllRead } from "./lib/gh/ghClient";
-import { openReview } from "./lib/review/launcher";
+
 import {
   getPinnedRepos,
   getHiddenRepos,
@@ -14,6 +14,7 @@ import {
   unpinRepo,
   hideRepo,
   unhideRepo,
+  dismissItem,
 } from "./lib/storage/local";
 
 function itemIcon(item: TriageItem): Image.ImageLike {
@@ -98,6 +99,16 @@ export default function SentinelMenuBar() {
     if (cached) await regroup(cached.items);
   }
 
+  async function handleDismiss(item: TriageItem) {
+    await dismissItem(item.id);
+    const cached = getCachedSnapshot();
+    if (cached) {
+      const filtered = cached.items.filter((i) => i.id !== item.id);
+      setCachedSnapshot({ items: filtered, fetchedAt: cached.fetchedAt });
+      await regroup(filtered);
+    }
+  }
+
   return (
     <MenuBarExtra
       icon={{ source: "github-mark.svg", tintColor: Color.PrimaryText }}
@@ -115,13 +126,11 @@ export default function SentinelMenuBar() {
               subtitle={itemSubtitle(item)}
               onAction={() => open(item.htmlUrl)}
               alternate={
-                item.kind === "pr" ? (
-                  <MenuBarExtra.Item
-                    icon={Icon.Terminal}
-                    title={`Review #${item.number}`}
-                    onAction={() => openReview(item.repo, item.number)}
-                  />
-                ) : undefined
+                <MenuBarExtra.Item
+                  icon={Icon.XMarkCircle}
+                  title={`Dismiss #${item.number}`}
+                  onAction={() => handleDismiss(item)}
+                />
               }
             />
           ))}
@@ -149,13 +158,11 @@ export default function SentinelMenuBar() {
                   subtitle={itemSubtitle(item)}
                   onAction={() => open(item.htmlUrl)}
                   alternate={
-                    item.kind === "pr" ? (
-                      <MenuBarExtra.Item
-                        icon={Icon.Terminal}
-                        title={`Review #${item.number}`}
-                        onAction={() => openReview(item.repo, item.number)}
-                      />
-                    ) : undefined
+                    <MenuBarExtra.Item
+                      icon={Icon.XMarkCircle}
+                      title={`Dismiss #${item.number}`}
+                      onAction={() => handleDismiss(item)}
+                    />
                   }
                 />
               ))}

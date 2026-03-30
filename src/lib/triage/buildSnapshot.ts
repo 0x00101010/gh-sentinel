@@ -13,7 +13,7 @@ import {
 } from "../gh/queries";
 import { mapNotification, mapSearchNode } from "../gh/mappers";
 import { scoreAndSort } from "./scoring";
-import { getWatchedRepoSet, getPinnedRepos } from "../storage/local";
+import { getWatchedRepoSet, getPinnedRepos, getDismissedIds } from "../storage/local";
 import { getCachedSnapshot } from "../storage/cache";
 
 function mergeItems(sources: TriageItem[][]): TriageItem[] {
@@ -164,7 +164,8 @@ export async function buildSnapshot(): Promise<TriageSnapshot> {
 
   await enrichItems(merged);
 
-  merged = merged.filter((item) => item.state === "open");
+  const dismissedIds = await getDismissedIds();
+  merged = merged.filter((item) => item.state === "open" && !dismissedIds.has(item.id));
   const scored = scoreAndSort(merged);
 
   return {

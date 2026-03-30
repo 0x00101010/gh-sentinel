@@ -4,6 +4,7 @@ import type { WatchedRepo } from "../model/settings";
 const WATCHED_REPOS_KEY = "watched-repos";
 const PINNED_REPOS_KEY = "pinned-repos";
 const HIDDEN_REPOS_KEY = "hidden-repos";
+const DISMISSED_IDS_KEY = "dismissed-ids";
 
 export async function getWatchedRepos(): Promise<WatchedRepo[]> {
   const raw = await LocalStorage.getItem<string>(WATCHED_REPOS_KEY);
@@ -68,4 +69,22 @@ export async function hideRepo(repo: string): Promise<void> {
 export async function unhideRepo(repo: string): Promise<void> {
   const hidden = await getStringList(HIDDEN_REPOS_KEY);
   await setStringList(HIDDEN_REPOS_KEY, hidden.filter((r) => r !== repo));
+}
+
+export async function getDismissedIds(): Promise<Set<string>> {
+  const list = await getStringList(DISMISSED_IDS_KEY);
+  return new Set(list);
+}
+
+export async function dismissItem(id: string): Promise<void> {
+  const dismissed = await getStringList(DISMISSED_IDS_KEY);
+  if (!dismissed.includes(id)) {
+    dismissed.push(id);
+    await setStringList(DISMISSED_IDS_KEY, dismissed);
+  }
+}
+
+export async function undismissItem(id: string): Promise<void> {
+  const dismissed = await getStringList(DISMISSED_IDS_KEY);
+  await setStringList(DISMISSED_IDS_KEY, dismissed.filter((d) => d !== id));
 }
