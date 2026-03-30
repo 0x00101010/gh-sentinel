@@ -117,54 +117,58 @@ export default function SentinelMenuBar() {
       isLoading={isLoading}
     >
       {visibleGroups.map((group) => {
+        const isPinned = pinnedSet.has(group.repo);
         const prs = group.items.filter((i) => i.kind === "pr");
         const issues = group.items.filter((i) => i.kind === "issue");
-        const label = `${pinnedSet.has(group.repo) ? "📌 " : ""}${group.repo} (${group.items.length})`;
-        return (
-          <MenuBarExtra.Submenu key={group.repo} title={label}>
-            {prs.length > 0 && (
-              <MenuBarExtra.Section title="Pull Requests">
-                {prs.map((item) => (
-                  <MenuBarExtra.Item
-                    key={item.id}
-                    icon={itemIcon(item)}
-                    title={item.title}
-                    subtitle={itemSubtitle(item)}
-                    onAction={() => open(item.htmlUrl)}
-                    alternate={
-                      <MenuBarExtra.Item
-                        icon={Icon.XMarkCircle}
-                        title={`Dismiss #${item.number}`}
-                        onAction={() => handleDismiss(item)}
-                      />
-                    }
-                  />
-                ))}
+
+        const renderItems = (items: TriageItem[]) =>
+          items.map((item) => (
+            <MenuBarExtra.Item
+              key={item.id}
+              icon={itemIcon(item)}
+              title={item.title}
+              subtitle={itemSubtitle(item)}
+              onAction={() => open(item.htmlUrl)}
+              alternate={
+                <MenuBarExtra.Item
+                  icon={Icon.XMarkCircle}
+                  title={`Dismiss #${item.number}`}
+                  onAction={() => handleDismiss(item)}
+                />
+              }
+            />
+          ));
+
+        const repoActions = (
+          <MenuBarExtra.Section>
+            <MenuBarExtra.Item
+              title={isPinned ? "Unpin Repo" : "Pin Repo"}
+              icon={Icon.Pin}
+              onAction={() => handlePin(group.repo)}
+            />
+            <MenuBarExtra.Item
+              title="Hide Repo"
+              icon={Icon.EyeDisabled}
+              onAction={() => handleHide(group.repo)}
+            />
+          </MenuBarExtra.Section>
+        );
+
+        if (isPinned) {
+          return [
+            prs.length > 0 && (
+              <MenuBarExtra.Section key={`${group.repo}:pr`} title={`📌 ${group.repo} — PRs`}>
+                {renderItems(prs)}
               </MenuBarExtra.Section>
-            )}
-            {issues.length > 0 && (
-              <MenuBarExtra.Section title="Issues">
-                {issues.map((item) => (
-                  <MenuBarExtra.Item
-                    key={item.id}
-                    icon={itemIcon(item)}
-                    title={item.title}
-                    subtitle={itemSubtitle(item)}
-                    onAction={() => open(item.htmlUrl)}
-                    alternate={
-                      <MenuBarExtra.Item
-                        icon={Icon.XMarkCircle}
-                        title={`Dismiss #${item.number}`}
-                        onAction={() => handleDismiss(item)}
-                      />
-                    }
-                  />
-                ))}
+            ),
+            issues.length > 0 && (
+              <MenuBarExtra.Section key={`${group.repo}:issue`} title={`📌 ${group.repo} — Issues`}>
+                {renderItems(issues)}
               </MenuBarExtra.Section>
-            )}
-            <MenuBarExtra.Section>
+            ),
+            <MenuBarExtra.Section key={`${group.repo}:actions`}>
               <MenuBarExtra.Item
-                title={pinnedSet.has(group.repo) ? "Unpin Repo" : "Pin Repo"}
+                title="Unpin Repo"
                 icon={Icon.Pin}
                 onAction={() => handlePin(group.repo)}
               />
@@ -173,7 +177,23 @@ export default function SentinelMenuBar() {
                 icon={Icon.EyeDisabled}
                 onAction={() => handleHide(group.repo)}
               />
-            </MenuBarExtra.Section>
+            </MenuBarExtra.Section>,
+          ];
+        }
+
+        return (
+          <MenuBarExtra.Submenu key={group.repo} title={`${group.repo} (${group.items.length})`}>
+            {prs.length > 0 && (
+              <MenuBarExtra.Section title="Pull Requests">
+                {renderItems(prs)}
+              </MenuBarExtra.Section>
+            )}
+            {issues.length > 0 && (
+              <MenuBarExtra.Section title="Issues">
+                {renderItems(issues)}
+              </MenuBarExtra.Section>
+            )}
+            {repoActions}
           </MenuBarExtra.Submenu>
         );
       })}
