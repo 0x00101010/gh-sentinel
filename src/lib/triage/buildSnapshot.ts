@@ -53,7 +53,10 @@ async function enrichItems(items: TriageItem[]): Promise<void> {
         .then((result) => {
           for (let i = 0; i < prs.length; i++) {
             const data = result.data[`pr${i}`]?.pullRequest;
-            if (!data) continue;
+            if (!data) {
+              prs[i].state = "closed";
+              continue;
+            }
             const pr = prs[i];
             if (data.state === "MERGED") pr.state = "merged";
             else if (data.state === "CLOSED") pr.state = "closed";
@@ -75,7 +78,10 @@ async function enrichItems(items: TriageItem[]): Promise<void> {
         .then((result) => {
           for (let i = 0; i < issues.length; i++) {
             const data = result.data[`issue${i}`]?.issue;
-            if (!data) continue;
+            if (!data) {
+              issues[i].state = "closed";
+              continue;
+            }
             const issue = issues[i];
             if (data.state === "CLOSED") issue.state = "closed";
             else issue.state = "open";

@@ -30,3 +30,8 @@ export function addSeenIds(ids: string[]): void {
   const trimmed = [...existing].slice(-MAX_SEEN);
   cache.set(SEEN_IDS_KEY, JSON.stringify(trimmed));
 }
+
+export function clearCache(): void {
+  cache.remove(SNAPSHOT_KEY);
+  cache.remove(SEEN_IDS_KEY);
+}

@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { TriageItem, RepoGroup } from "./lib/model/triage";
 import { buildSnapshot } from "./lib/triage/buildSnapshot";
 import { groupByRepo } from "./lib/triage/grouping";
-import { getCachedSnapshot, setCachedSnapshot } from "./lib/storage/cache";
+import { getCachedSnapshot, setCachedSnapshot, clearCache } from "./lib/storage/cache";
 import { notifyNewItems } from "./lib/notify/dedupe";
 import { ghMarkAllRead } from "./lib/gh/ghClient";
 import { openReview } from "./lib/review/launcher";
@@ -182,6 +182,16 @@ export default function SentinelMenuBar() {
               } catch {
                 // ignore
               }
+            }}
+          />
+          <MenuBarExtra.Item
+            title="Clear Cache & Refresh"
+            icon={Icon.Trash}
+            onAction={() => {
+              clearCache();
+              setVisibleGroups([]);
+              setHiddenGroups([]);
+              setTotalCount(0);
             }}
           />
         </MenuBarExtra.Section>
