@@ -1,6 +1,6 @@
 import { Color, environment, Icon, Image, LaunchType, MenuBarExtra, open, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
-import type { TriageItem, RepoGroup } from "./lib/model/triage";
+import { dismissKey, type TriageItem, type RepoGroup } from "./lib/model/triage";
 import { buildSnapshot } from "./lib/triage/buildSnapshot";
 import { groupByRepo } from "./lib/triage/grouping";
 import { getCachedSnapshot, setCachedSnapshot, clearCache } from "./lib/storage/cache";
@@ -100,10 +100,11 @@ export default function SentinelMenuBar() {
   }
 
   async function handleDismiss(item: TriageItem) {
-    await dismissItem(item.id);
+    const key = dismissKey(item);
+    await dismissItem(key);
     const cached = getCachedSnapshot();
     if (cached) {
-      const filtered = cached.items.filter((i) => i.id !== item.id);
+      const filtered = cached.items.filter((i) => dismissKey(i) !== key);
       setCachedSnapshot({ items: filtered, fetchedAt: cached.fetchedAt });
       await regroup(filtered);
     }

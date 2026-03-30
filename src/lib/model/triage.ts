@@ -45,3 +45,7 @@ export interface RepoGroup {
   repo: string;
   items: TriageItem[];
 }
+
+export function dismissKey(item: TriageItem): string {
+  return `${item.repo}:${item.number}`;
+}

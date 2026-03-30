@@ -1,4 +1,4 @@
-import type { TriageItem, TriageSnapshot } from "../model/triage";
+import { dismissKey, type TriageItem, type TriageSnapshot } from "../model/triage";
 import { ghRest, ghGraphQL } from "../gh/ghClient";
 import {
   SEARCH_REVIEW_REQUESTED,
@@ -164,8 +164,8 @@ export async function buildSnapshot(): Promise<TriageSnapshot> {
 
   await enrichItems(merged);
 
-  const dismissedIds = await getDismissedIds();
-  merged = merged.filter((item) => item.state === "open" && !dismissedIds.has(item.id));
+  const dismissedKeys = await getDismissedIds();
+  merged = merged.filter((item) => item.state === "open" && !dismissedKeys.has(dismissKey(item)));
   const scored = scoreAndSort(merged);
 
   return {
