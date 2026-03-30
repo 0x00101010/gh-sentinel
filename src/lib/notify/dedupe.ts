@@ -1,16 +1,16 @@
 import type { TriageItem } from "../model/triage";
 import { getSeenIds, addSeenIds } from "../storage/cache";
-import { getNotifyRepoSet } from "../storage/local";
+import { getPinnedRepos } from "../storage/local";
 import { notify } from "./notifier";
 
 export async function notifyNewItems(items: TriageItem[]): Promise<void> {
   const seenIds = getSeenIds();
-  const notifyRepos = await getNotifyRepoSet();
-  const hasFilter = notifyRepos.size > 0;
+  const pinnedRepos = await getPinnedRepos();
+  const pinnedSet = new Set(pinnedRepos.map((r) => r.toLowerCase()));
 
   const unseen = items.filter((item) => {
     if (seenIds.has(item.id)) return false;
-    if (hasFilter && !notifyRepos.has(item.repo.toLowerCase())) return false;
+    if (!pinnedSet.has(item.repo.toLowerCase())) return false;
     return true;
   });
 
