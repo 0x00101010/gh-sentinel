@@ -152,7 +152,7 @@ export async function buildSnapshot(): Promise<TriageSnapshot> {
 
   const pinnedRepos = await getPinnedRepos();
   const scanSet = new Set<string>([...watchedRepos, ...pinnedRepos.map((r) => r.toLowerCase())]);
-  const scanned = await scanWatchedRepos([...scanSet]);
+  const scanned = (await scanWatchedRepos([...scanSet])).filter((item) => !item.isDraft);
 
   const cachedItems = getCachedSnapshot()?.items ?? [];
 
