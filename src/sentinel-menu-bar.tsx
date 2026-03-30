@@ -116,36 +116,67 @@ export default function SentinelMenuBar() {
       tooltip="GitHub Sentinel"
       isLoading={isLoading}
     >
-      {visibleGroups.map((group) => (
-        <MenuBarExtra.Section key={group.repo} title={`${pinnedSet.has(group.repo) ? "📌 " : ""}${group.repo}`}>
-          {group.items.map((item) => (
-            <MenuBarExtra.Item
-              key={item.id}
-              icon={itemIcon(item)}
-              title={item.title}
-              subtitle={itemSubtitle(item)}
-              onAction={() => open(item.htmlUrl)}
-              alternate={
-                <MenuBarExtra.Item
-                  icon={Icon.XMarkCircle}
-                  title={`Dismiss #${item.number}`}
-                  onAction={() => handleDismiss(item)}
-                />
-              }
-            />
-          ))}
-          <MenuBarExtra.Item
-            title={pinnedSet.has(group.repo) ? "Unpin Repo" : "Pin Repo"}
-            icon={Icon.Pin}
-            onAction={() => handlePin(group.repo)}
-          />
-          <MenuBarExtra.Item
-            title="Hide Repo"
-            icon={Icon.EyeDisabled}
-            onAction={() => handleHide(group.repo)}
-          />
-        </MenuBarExtra.Section>
-      ))}
+      {visibleGroups.map((group) => {
+        const prs = group.items.filter((i) => i.kind === "pr");
+        const issues = group.items.filter((i) => i.kind === "issue");
+        const label = `${pinnedSet.has(group.repo) ? "📌 " : ""}${group.repo} (${group.items.length})`;
+        return (
+          <MenuBarExtra.Submenu key={group.repo} title={label}>
+            {prs.length > 0 && (
+              <MenuBarExtra.Section title="Pull Requests">
+                {prs.map((item) => (
+                  <MenuBarExtra.Item
+                    key={item.id}
+                    icon={itemIcon(item)}
+                    title={item.title}
+                    subtitle={itemSubtitle(item)}
+                    onAction={() => open(item.htmlUrl)}
+                    alternate={
+                      <MenuBarExtra.Item
+                        icon={Icon.XMarkCircle}
+                        title={`Dismiss #${item.number}`}
+                        onAction={() => handleDismiss(item)}
+                      />
+                    }
+                  />
+                ))}
+              </MenuBarExtra.Section>
+            )}
+            {issues.length > 0 && (
+              <MenuBarExtra.Section title="Issues">
+                {issues.map((item) => (
+                  <MenuBarExtra.Item
+                    key={item.id}
+                    icon={itemIcon(item)}
+                    title={item.title}
+                    subtitle={itemSubtitle(item)}
+                    onAction={() => open(item.htmlUrl)}
+                    alternate={
+                      <MenuBarExtra.Item
+                        icon={Icon.XMarkCircle}
+                        title={`Dismiss #${item.number}`}
+                        onAction={() => handleDismiss(item)}
+                      />
+                    }
+                  />
+                ))}
+              </MenuBarExtra.Section>
+            )}
+            <MenuBarExtra.Section>
+              <MenuBarExtra.Item
+                title={pinnedSet.has(group.repo) ? "Unpin Repo" : "Pin Repo"}
+                icon={Icon.Pin}
+                onAction={() => handlePin(group.repo)}
+              />
+              <MenuBarExtra.Item
+                title="Hide Repo"
+                icon={Icon.EyeDisabled}
+                onAction={() => handleHide(group.repo)}
+              />
+            </MenuBarExtra.Section>
+          </MenuBarExtra.Submenu>
+        );
+      })}
       {hiddenGroups.length > 0 && (
         <MenuBarExtra.Section title="Hidden">
           {hiddenGroups.map((group) => (
