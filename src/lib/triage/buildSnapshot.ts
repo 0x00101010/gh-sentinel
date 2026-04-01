@@ -17,11 +17,12 @@ import { getWatchedRepoSet, getPinnedRepos, getDismissedIds } from "../storage/l
 import { getCachedSnapshot } from "../storage/cache";
 
 function mergeItems(sources: TriageItem[][]): TriageItem[] {
-  const byId = new Map<string, TriageItem>();
+  const byKey = new Map<string, TriageItem>();
 
   for (const items of sources) {
     for (const item of items) {
-      const existing = byId.get(item.id);
+      const key = dismissKey(item);
+      const existing = byKey.get(key);
       if (existing) {
         const reasonSet = new Set([...existing.reasons, ...item.reasons]);
         existing.reasons = [...reasonSet];
@@ -34,12 +35,12 @@ function mergeItems(sources: TriageItem[][]): TriageItem[] {
         }
         if (item.isDraft) existing.isDraft = true;
       } else {
-        byId.set(item.id, { ...item });
+        byKey.set(key, { ...item });
       }
     }
   }
 
-  return [...byId.values()];
+  return [...byKey.values()];
 }
 
 async function enrichItems(items: TriageItem[]): Promise<void> {
