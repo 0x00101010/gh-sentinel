@@ -138,8 +138,12 @@ export async function buildSnapshot(): Promise<TriageSnapshot> {
   const watchedRepos = await getWatchedRepoSet();
   const hasFilter = watchedRepos.size > 0;
 
+  const since = new Date();
+  since.setDate(since.getDate() - SCAN_LOOKBACK_DAYS);
+  const sinceParam = since.toISOString();
+
   const [notifications, reviewRequested, assigned] = await Promise.all([
-    ghRest<GitHubNotification[]>("notifications?per_page=50").catch(() => []),
+    ghRest<GitHubNotification[]>(`notifications?per_page=50&since=${sinceParam}`).catch(() => []),
     ghGraphQL<SearchResult>(SEARCH_REVIEW_REQUESTED).catch(() => null),
     ghGraphQL<SearchResult>(SEARCH_ASSIGNED).catch(() => null),
   ]);
