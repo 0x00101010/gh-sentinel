@@ -1,4 +1,8 @@
-import { dismissKey, type TriageItem, type TriageSnapshot } from "../model/triage";
+import {
+  dismissKey,
+  type TriageItem,
+  type TriageSnapshot,
+} from "../model/triage";
 import { ghRest, ghGraphQL } from "../gh/ghClient";
 import {
   SEARCH_REVIEW_REQUESTED,
@@ -13,8 +17,12 @@ import {
 } from "../gh/queries";
 import { mapNotification, mapSearchNode } from "../gh/mappers";
 import { scoreAndSort } from "./scoring";
-import { getWatchedRepoSet, getPinnedRepos, getDismissedIds } from "../storage/local";
-import { getCachedSnapshot } from "../storage/cache";
+import {
+  getWatchedRepoSet,
+  getPinnedRepos,
+  getDismissedIds,
+} from "../storage/local";
+
 
 function mergeItems(sources: TriageItem[][]): TriageItem[] {
   const byKey = new Map<string, TriageItem>();
@@ -43,61 +51,89 @@ function mergeItems(sources: TriageItem[][]): TriageItem[] {
   return [...byKey.values()];
 }
 
+const ENRICH_BATCH_SIZE = 25;
+
+async function enrichPrBatch(batch: TriageItem[]): Promise<void> {
+  try {
+    const result = await ghGraphQL<PrDetailResult>(
+      buildPrDetailQuery(
+        batch.map((p) => ({ repo: p.repo, number: p.number })),
+      ),
+    );
+    if (!result?.data) {
+      console.error("gh-sentinel: PR enrichment returned no data", result);
+      return;
+    }
+    for (let i = 0; i < batch.length; i++) {
+      const data = result.data[`pr${i}`]?.pullRequest;
+      if (!data) {
+        batch[i].state = "closed";
+        continue;
+      }
+      const pr = batch[i];
+      if (data.state === "MERGED") pr.state = "merged";
+      else if (data.state === "CLOSED") pr.state = "closed";
+      else pr.state = "open";
+      pr.isDraft = data.isDraft;
+      if (data.author && !pr.author) {
+        pr.author = data.author.login;
+        pr.avatarUrl = data.author.avatarUrl;
+      }
+    }
+  } catch (e) {
+    console.error("gh-sentinel: PR enrichment batch failed", e);
+  }
+}
+
+async function enrichIssueBatch(batch: TriageItem[]): Promise<void> {
+  try {
+    const result = await ghGraphQL<IssueDetailResult>(
+      buildIssueDetailQuery(
+        batch.map((iss) => ({ repo: iss.repo, number: iss.number })),
+      ),
+    );
+    if (!result?.data) {
+      console.error("gh-sentinel: issue enrichment returned no data", result);
+      return;
+    }
+    for (let i = 0; i < batch.length; i++) {
+      const data = result.data[`issue${i}`]?.issue;
+      if (!data) {
+        batch[i].state = "closed";
+        continue;
+      }
+      const issue = batch[i];
+      if (data.state === "CLOSED") issue.state = "closed";
+      else issue.state = "open";
+      if (data.author && !issue.author) {
+        issue.author = data.author.login;
+        issue.avatarUrl = data.author.avatarUrl;
+      }
+    }
+  } catch (e) {
+    console.error("gh-sentinel: issue enrichment batch failed", e);
+  }
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    out.push(arr.slice(i, i + size));
+  }
+  return out;
+}
+
 async function enrichItems(items: TriageItem[]): Promise<void> {
   const prs = items.filter((item) => item.kind === "pr");
   const issues = items.filter((item) => item.kind === "issue");
 
-  const promises: Promise<void>[] = [];
+  const prBatches = chunk(prs, ENRICH_BATCH_SIZE);
+  const issueBatches = chunk(issues, ENRICH_BATCH_SIZE);
 
-  if (prs.length > 0) {
-    promises.push(
-      ghGraphQL<PrDetailResult>(buildPrDetailQuery(prs.map((p) => ({ repo: p.repo, number: p.number }))))
-        .then((result) => {
-          for (let i = 0; i < prs.length; i++) {
-            const data = result.data[`pr${i}`]?.pullRequest;
-            if (!data) {
-              prs[i].state = "closed";
-              continue;
-            }
-            const pr = prs[i];
-            if (data.state === "MERGED") pr.state = "merged";
-            else if (data.state === "CLOSED") pr.state = "closed";
-            else pr.state = "open";
-            pr.isDraft = data.isDraft;
-            if (data.author && !pr.author) {
-              pr.author = data.author.login;
-              pr.avatarUrl = data.author.avatarUrl;
-            }
-          }
-        })
-        .catch(() => {}),
-    );
-  }
-
-  if (issues.length > 0) {
-    promises.push(
-      ghGraphQL<IssueDetailResult>(buildIssueDetailQuery(issues.map((iss) => ({ repo: iss.repo, number: iss.number }))))
-        .then((result) => {
-          for (let i = 0; i < issues.length; i++) {
-            const data = result.data[`issue${i}`]?.issue;
-            if (!data) {
-              issues[i].state = "closed";
-              continue;
-            }
-            const issue = issues[i];
-            if (data.state === "CLOSED") issue.state = "closed";
-            else issue.state = "open";
-            if (data.author && !issue.author) {
-              issue.author = data.author.login;
-              issue.avatarUrl = data.author.avatarUrl;
-            }
-          }
-        })
-        .catch(() => {}),
-    );
-  }
-
-  await Promise.all(promises);
+  await Promise.all([
+    ...prBatches.map((batch) => enrichPrBatch(batch)),
+    ...issueBatches.map((batch) => enrichIssueBatch(batch)),
+  ]);
 }
 
 const SCAN_LOOKBACK_DAYS = 14;
@@ -120,7 +156,9 @@ async function scanWatchedRepos(repos: string[]): Promise<TriageItem[]> {
 
   const results = await Promise.all(
     batches.map((batch) =>
-      ghGraphQL<SearchResult>(buildRepoScanQuery(batch, since)).catch(() => null),
+      ghGraphQL<SearchResult>(buildRepoScanQuery(batch, since)).catch(
+        () => null,
+      ),
     ),
   );
 
@@ -143,7 +181,9 @@ export async function buildSnapshot(): Promise<TriageSnapshot> {
   const sinceParam = since.toISOString();
 
   const [notifications, reviewRequested, assigned] = await Promise.all([
-    ghRest<GitHubNotification[]>(`notifications?per_page=50&since=${sinceParam}`).catch(() => []),
+    ghRest<GitHubNotification[]>(
+      `notifications?per_page=50&since=${sinceParam}`,
+    ).catch(() => []),
     ghGraphQL<SearchResult>(SEARCH_REVIEW_REQUESTED).catch(() => null),
     ghGraphQL<SearchResult>(SEARCH_ASSIGNED).catch(() => null),
   ]);
@@ -152,16 +192,22 @@ export async function buildSnapshot(): Promise<TriageSnapshot> {
     .map(mapNotification)
     .filter((item): item is TriageItem => item !== null);
 
-  const reviewItems = reviewRequested?.data.search.nodes.map((n) => mapSearchNode(n, "review")) ?? [];
-  const assignedItems = assigned?.data.search.nodes.map((n) => mapSearchNode(n, "assigned")) ?? [];
+  const reviewItems =
+    reviewRequested?.data.search.nodes.map((n) => mapSearchNode(n, "review")) ??
+    [];
+  const assignedItems =
+    assigned?.data.search.nodes.map((n) => mapSearchNode(n, "assigned")) ?? [];
 
   const pinnedRepos = await getPinnedRepos();
-  const scanSet = new Set<string>([...watchedRepos, ...pinnedRepos.map((r) => r.toLowerCase())]);
-  const scanned = (await scanWatchedRepos([...scanSet])).filter((item) => !item.isDraft);
+  const scanSet = new Set<string>([
+    ...watchedRepos,
+    ...pinnedRepos.map((r) => r.toLowerCase()),
+  ]);
+  const scanned = (await scanWatchedRepos([...scanSet])).filter(
+    (item) => !item.isDraft,
+  );
 
-  const cachedItems = getCachedSnapshot()?.items ?? [];
-
-  let merged = mergeItems([cachedItems, notifItems, reviewItems, assignedItems, scanned]);
+  let merged = mergeItems([notifItems, reviewItems, assignedItems, scanned]);
 
   if (hasFilter) {
     merged = merged.filter((item) => watchedRepos.has(item.repo.toLowerCase()));
@@ -170,7 +216,9 @@ export async function buildSnapshot(): Promise<TriageSnapshot> {
   await enrichItems(merged);
 
   const dismissedKeys = await getDismissedIds();
-  merged = merged.filter((item) => item.state === "open" && !dismissedKeys.has(dismissKey(item)));
+  merged = merged.filter(
+    (item) => item.state === "open" && !dismissedKeys.has(dismissKey(item)),
+  );
   const scored = scoreAndSort(merged);
 
   return {
